@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kontrol Relay 4 Channel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Kontrol Relay</h1>
+      <p class="device">Perangkat: <strong id="deviceId">-</strong></p>
+    </div>
+    <div class="statuses">
+      <div class="status" id="cloudStatus" role="status"><span class="dot"></span><span>Firebase: <span id="cloudText">menghubungkan…</span></span></div>
+      <div class="status" id="deviceStatus" role="status"><span class="dot"></span><span>Alat: <span id="deviceText">menunggu…</span></span></div>
+    </div>
+  </header>
+
+  <main>
+    <section aria-label="Relay">
+      <div class="row">
+        <h2>4 Channel Relay</h2>
+        <div class="actions">
+          <button id="btnAllOn">Nyalakan semua</button>
+          <button id="btnAllOff" class="ghost">Matikan semua</button>
+        </div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <section class="panel history" aria-label="Riwayat">
+      <div class="row">
+        <h2>Riwayat di Google Sheets</h2>
+        <button id="btnLoad" class="ghost">Muat riwayat</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Waktu</th><th>Relay</th><th>Status</th></tr></thead>
+          <tbody id="historyBody"><tr><td colspan="3" class="empty">Tekan “Muat riwayat” untuk mengambil data.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="alert"></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
