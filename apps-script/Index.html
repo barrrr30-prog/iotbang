@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Kontrol Relay 4 Channel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+:root{
+  --bg:#E8EEEA; --panel:#F6F8F5; --ink:#10261F; --muted:#5B6F67;
+  --line:#C5D1CA; --on:#E39B00; --ok:#2E7D5B; --bad:#B3402A;
+  --head:"Bricolage Grotesque",system-ui,sans-serif;
+  --body:"Figtree",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;
+  padding:max(16px,env(safe-area-inset-top)) 16px 40px}
+main,.top{max-width:760px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:16px 0 20px;flex-wrap:wrap}
+h1,h2{font-family:var(--head);margin:0;letter-spacing:-.01em}
+h1{font-size:2rem}
+h2{font-size:1.15rem}
+.device{margin:2px 0 0;color:var(--muted)}
+.statuses{display:flex;flex-direction:column;gap:2px;font-size:.9rem;font-weight:500}
+.status{display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+.status.online .dot{background:var(--ok)}
+.status.offline .dot{background:var(--bad)}
+
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.row h2{margin:0}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:28px;
+  min-height:150px;padding:18px;border-radius:16px;border:1px solid var(--line);background:var(--panel);
+  color:var(--ink);text-align:left;cursor:pointer;transition:background .2s,border-color .2s}
+.tile .name{font-family:var(--head);font-weight:700;font-size:1.4rem}
+.tile .state{font-size:1rem;font-weight:600;color:var(--muted)}
+.tile .track{width:56px;height:30px;border-radius:15px;background:var(--line);position:relative;transition:background .2s}
+.tile .track::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s}
+.tile[aria-checked="true"]{background:var(--on);border-color:var(--on)}
+.tile[aria-checked="true"] .state{color:var(--ink)}
+.tile[aria-checked="true"] .track{background:var(--ink)}
+.tile[aria-checked="true"] .track::after{transform:translateX(26px)}
+.tile:active{transform:scale(.98)}
+.tile,button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+button{font:inherit;font-weight:600;padding:9px 16px;border-radius:10px;border:1px solid var(--ink);background:var(--ink);color:var(--panel);cursor:pointer}
+button.ghost{background:transparent;color:var(--ink)}
+button.tile{padding:18px;font-weight:inherit}
+button:disabled{opacity:.5;cursor:wait}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:380px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:500;font-size:.9rem}
+.empty{color:var(--muted)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,20px);
+  background:var(--ink);color:var(--panel);padding:10px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (max-width:420px){.tile{min-height:130px}.tile .name{font-size:1.2rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Kontrol Relay</h1>
+      <p class="device">Perangkat: <strong id="deviceId">-</strong></p>
+    </div>
+    <div class="statuses">
+      <div class="status" id="cloudStatus" role="status"><span class="dot"></span><span>Firebase: <span id="cloudText">menghubungkan…</span></span></div>
+      <div class="status" id="deviceStatus" role="status"><span class="dot"></span><span>Alat: <span id="deviceText">menunggu…</span></span></div>
+    </div>
+  </header>
+
+  <main>
+    <section aria-label="Relay">
+      <div class="row">
+        <h2>4 Channel Relay</h2>
+        <div class="actions">
+          <button id="btnAllOn">Nyalakan semua</button>
+          <button id="btnAllOff" class="ghost">Matikan semua</button>
+        </div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <section class="panel history" aria-label="Riwayat">
+      <div class="row">
+        <h2>Riwayat di Google Sheets</h2>
+        <button id="btnLoad" class="ghost">Muat riwayat</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Waktu</th><th>Relay</th><th>Status</th></tr></thead>
+          <tbody id="historyBody"><tr><td colspan="3" class="empty">Tekan “Muat riwayat” untuk mengambil data.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="alert"></div>
+  <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+
+/* ===== SATU-SATUNYA BAGIAN YANG PERLU DIEDIT: isi data Firebase ===== */
+const CONFIG = {
+  deviceId: "esp32-01",
+  relays: [
+    { key: "relay1", name: "Relay 1" },
+    { key: "relay2", name: "Relay 2" },
+    { key: "relay3", name: "Relay 3" },
+    { key: "relay4", name: "Relay 4" }
+  ],
+  firebase: {
+    apiKey: "ISI_API_KEY",
+    authDomain: "PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "PROJECT_ID",
+    appId: "ISI_APP_ID"
+  },
+  logToggles: true,
+  offlineAfterMs: 30000,
+  historyLimit: 20
+};
+
+/* ===== Firebase (realtime) ===== */
+let db;
+const rt = {
+  init() { db = getDatabase(initializeApp(CONFIG.firebase)); },
+  subscribe(deviceId, onData, onStatus) {
+    onValue(ref(db, `devices/${deviceId}`), (s) => onData(s.val() || {}),
+      (err) => onStatus(false, err.message));
+    onValue(ref(db, ".info/connected"), (s) => onStatus(!!s.val()));
+  },
+  setRelay(deviceId, key, value) {
+    return set(ref(db, `devices/${deviceId}/relays/${key}`), !!value);
+  }
+};
+
+/* ===== Google Sheets lewat google.script.run (tanpa CORS) ===== */
+function server(fn, ...args) {
+  return new Promise((resolve, reject) => {
+    if (typeof google === "undefined" || !google.script || !google.script.run) {
+      return reject(new Error("Halaman harus dibuka dari URL Apps Script"));
+    }
+    google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler((e) => reject(new Error((e && e.message) || String(e))))[fn](...args);
+  });
+}
+const store = {
+  async saveEvent(p) {
+    const r = await server("logEvent", p);
+    if (!r || !r.ok) throw new Error((r && r.error) || "Gagal menyimpan");
+  },
+  async getHistory(deviceId, limit) {
+    const r = await server("getHistory", deviceId, limit);
+    if (!r || !r.ok) throw new Error((r && r.error) || "Gagal memuat");
+    return r.rows;
+  }
+};
+
+/* ===== UI ===== */
+const $ = (s) => document.querySelector(s);
+const names = {};
+let toastTimer;
+
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+}
+function paint(sel, ok, text, label) {
+  $(sel).className = "status " + (ok === null ? "" : ok ? "online" : "offline");
+  $(label).textContent = text;
+}
+const setCloud = (ok, text) => paint("#cloudStatus", ok, text ?? (ok ? "terhubung" : "terputus"), "#cloudText");
+const setDevice = (ok, text) => paint("#deviceStatus", ok, text, "#deviceText");
+const busy = (sel, state) => { $(sel).disabled = state; };
+
+function initUI(onToggle) {
+  $("#deviceId").textContent = CONFIG.deviceId;
+  CONFIG.relays.forEach((r) => (names[r.key] = r.name));
+  $("#tiles").innerHTML = CONFIG.relays.map((r) =>
+    `<button class="tile" role="switch" aria-checked="false" data-key="${r.key}">
+       <span class="name">${r.name}</span><span class="track"></span><span class="state">Mati</span>
+     </button>`).join("");
+  document.querySelectorAll(".tile").forEach((t) =>
+    t.addEventListener("click", () => onToggle(t.dataset.key, t.getAttribute("aria-checked") !== "true")));
+}
+function renderRelays(relays = {}) {
+  document.querySelectorAll(".tile").forEach((t) => {
+    const on = !!relays[t.dataset.key];
+    t.setAttribute("aria-checked", String(on));
+    t.querySelector(".state").textContent = on ? "Nyala" : "Mati";
+  });
+}
+function renderHistory(rows) {
+  $("#historyBody").innerHTML = rows.length
+    ? rows.map((r) => `<tr><td>${new Date(r.timestamp).toLocaleString("id-ID")}</td><td>${names[r.relay] || r.relay}</td><td>${r.state ? "Nyala" : "Mati"}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="empty">Belum ada riwayat tersimpan.</td></tr>`;
+}
+
+/* ===== Logika utama ===== */
+let lastSeen = null;
+
+async function toggle(key, value) {
+  try { await rt.setRelay(CONFIG.deviceId, key, value); }
+  catch (e) { return toast("Gagal mengirim: " + e.message); }
+  if (CONFIG.logToggles) store.saveEvent({ deviceId: CONFIG.deviceId, relay: key, state: value }).catch(() => {});
+}
+function checkDevice() {
+  if (!lastSeen) return setDevice(null, "belum ada sinyal");
+  const online = Date.now() - lastSeen < CONFIG.offlineAfterMs;
+  setDevice(online, online ? "online" : "offline");
+}
+async function loadHistory() {
+  busy("#btnLoad", true);
+  try { renderHistory(await store.getHistory(CONFIG.deviceId, CONFIG.historyLimit)); }
+  catch (e) { toast(e.message); }
+  busy("#btnLoad", false);
+}
+
+initUI(toggle);
+$("#btnAllOn").addEventListener("click", () => CONFIG.relays.forEach((r) => toggle(r.key, true)));
+$("#btnAllOff").addEventListener("click", () => CONFIG.relays.forEach((r) => toggle(r.key, false)));
+$("#btnLoad").addEventListener("click", loadHistory);
+
+if (CONFIG.firebase.apiKey.startsWith("ISI")) {
+  setCloud(false, "isi config Firebase di Index.html dulu");
+} else {
+  try {
+    rt.init();
+    rt.subscribe(CONFIG.deviceId,
+      (d) => { renderRelays(d.relays); lastSeen = (d.status && d.status.lastSeen) || null; checkDevice(); },
+      (ok, msg) => setCloud(ok, ok ? undefined : msg));
+    setInterval(checkDevice, 5000);
+  } catch (e) { setCloud(false, e.message); }
+}
+</script>
+</body>
+</html>
